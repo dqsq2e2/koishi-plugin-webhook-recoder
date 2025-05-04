@@ -2,6 +2,8 @@ import { Bot, Context, Logger, Schema } from 'koishi'
 import type { Next } from 'koishi'
 import type { Context as KoaContext } from 'koa'
 import type { Session } from 'koishi'
+import * as fs from 'node:fs'
+import * as path from 'node:path'
 
 // 为Koa的Request接口添加body属性
 declare module 'koa' {
@@ -37,10 +39,13 @@ export interface Webhook {
     saveLatestMessage?: boolean
     customCommand?: string
     commandDescription?: string
+    persistMessages?: boolean
 }
 
+// 使用独立的配置接口定义，将persistPath移出索引签名范围
 export interface Config {
-    [key: string]: Webhook
+    [key: string]: Webhook | string | undefined
+    persistPath?: string
 }
 
 // 扩展Context接口，添加server属性
@@ -52,21 +57,29 @@ declare module 'koishi' {
     }
 }
 
-export const Config = Schema.dict(
-    Schema.object({
-        method: Schema.union(['get', 'post']).default('get').description('监听方式'),
-        headers: Schema.dict(Schema.string()).role('table').description('检查头 如果填写则需要在请求头中包含'),
-        response: Schema.array(Schema.object({
-            platform: Schema.union(['onebot', 'kook', 'telegram', 'discord', 'lark', 'chronocat']).default('onebot').description('机器人平台'),
-            sid: Schema.string().required().description('机器人id，用于获取Bot对象'),
-            seeisonId: Schema.array(Schema.string().required()).role('table').description('群聊/私聊对象id,私聊对象需在前方加上`private:`,如`private:123456`'),
-            msg: Schema.array(Schema.string().default("hello {name}.")).role('table').required().description('需要发送的信息，会使用换行符合并<br>接收的body会按照JSON解析，并将key以{key}形式全替换字符串内容')
-        })).description('响应'),
-        saveLatestMessage: Schema.boolean().default(false).description('是否保存最新消息'),
-        customCommand: Schema.string().description('触发发送最新保存消息的指令，例如：/latest'),
-        commandDescription: Schema.string().description('指令的描述')
-    })).description("监听指定路径，如:`/api`")
+// 定义配置Schema
+const WebhookSchema = Schema.object({
+    method: Schema.union(['get', 'post']).default('get').description('监听方式'),
+    headers: Schema.dict(Schema.string()).role('table').description('检查头 如果填写则需要在请求头中包含'),
+    response: Schema.array(Schema.object({
+        platform: Schema.union(['onebot', 'kook', 'telegram', 'discord', 'lark', 'chronocat']).default('onebot').description('机器人平台'),
+        sid: Schema.string().required().description('机器人id，用于获取Bot对象'),
+        seeisonId: Schema.array(Schema.string().required()).role('table').description('群聊/私聊对象id,私聊对象需在前方加上`private:`,如`private:123456`'),
+        msg: Schema.array(Schema.string().default("hello {name}.")).role('table').required().description('需要发送的信息，会使用换行符合并<br>接收的body会按照JSON解析，并将key以{key}形式全替换字符串内容')
+    })).description('响应'),
+    saveLatestMessage: Schema.boolean().default(false).description('是否保存最新消息'),
+    customCommand: Schema.string().description('触发发送最新保存消息的指令，例如：latest'),
+    commandDescription: Schema.string().description('指令的描述'),
+    persistMessages: Schema.boolean().default(false).description('是否将最新消息持久化保存到磁盘')
+})
 
+// 创建完整的配置Schema
+export const Config = Schema.intersect([
+    Schema.dict(WebhookSchema).description("监听指定路径，如:`/api`"),
+    Schema.object({
+        persistPath: Schema.string().default('./data/webhook-messages').description('持久化存储的路径，相对于 koishi 工作目录')
+    })
+])
 
 export interface varDict {
     [key: string]: string
@@ -90,7 +103,7 @@ function sendLatestMessage(bot: Bot, sessionId: string, path: string, config: Co
     }
     
     // 查找当前路径的配置
-    const pathConfig = config[path];
+    const pathConfig = config[path] as Webhook | undefined;
     if (!pathConfig || !pathConfig.response) {
         return bot.createMessage(sessionId, `找不到 ${path} 的配置信息`);
     }
@@ -114,13 +127,77 @@ function sendLatestMessage(bot: Bot, sessionId: string, path: string, config: Co
     bot.createMessage(sessionId, `来自 ${path} 的最新消息：${JSON.stringify(storedMessage.body, null, 2)}`);
 }
 
+// 持久化保存消息到文件
+function persistMessage(messagePath: string, message: StoredMessage, persistPath: string, logger: Logger) {
+    try {
+        // 创建目录（如果不存在）
+        const dirPath = path.resolve(persistPath);
+        if (!fs.existsSync(dirPath)) {
+            fs.mkdirSync(dirPath, { recursive: true });
+            logger.info(`创建持久化存储目录: ${dirPath}`);
+        }
+        
+        // 规范化路径名（替换特殊字符）
+        const safePathName = messagePath.replace(/[\/\\:*?"<>|]/g, '_');
+        const filePath = path.join(dirPath, `${safePathName}.json`);
+        
+        // 写入文件
+        fs.writeFileSync(filePath, JSON.stringify(message, null, 2), 'utf8');
+        logger.info(`已持久化保存来自 ${messagePath} 的消息到 ${filePath}`);
+    } catch (error) {
+        logger.error(`持久化保存消息失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+
+// 从文件加载持久化的消息
+function loadPersistedMessages(persistPath: string, logger: Logger) {
+    try {
+        const dirPath = path.resolve(persistPath);
+        if (!fs.existsSync(dirPath)) {
+            logger.info(`持久化存储目录不存在，将在收到消息时创建: ${dirPath}`);
+            return;
+        }
+        
+        // 读取目录中的所有JSON文件
+        const files = fs.readdirSync(dirPath).filter(file => file.endsWith('.json'));
+        logger.info(`找到 ${files.length} 个持久化消息文件`);
+        
+        // 加载每个文件的内容
+        for (const file of files) {
+            try {
+                const filePath = path.join(dirPath, file);
+                const content = fs.readFileSync(filePath, 'utf8');
+                const message = JSON.parse(content) as StoredMessage;
+                
+                // 还原原始路径名（从文件名提取）
+                const originalPath = message.path;
+                latestMessages[originalPath] = message;
+                logger.info(`已加载来自 ${originalPath} 的持久化消息`);
+            } catch (error) {
+                logger.error(`加载文件 ${file} 失败: ${error instanceof Error ? error.message : String(error)}`);
+            }
+        }
+    } catch (error) {
+        logger.error(`加载持久化消息失败: ${error instanceof Error ? error.message : String(error)}`);
+    }
+}
+
 export function apply(ctx: Context, config: Config) {
     const logger = ctx.logger(name);
+    
+    // 获取持久化存储路径
+    const persistPath = config.persistPath || './data/webhook-messages';
+    
+    // 尝试加载持久化的消息
+    loadPersistedMessages(persistPath, logger);
 
     // 注册自定义指令处理器
     for (let path in config) {
-        const item = config[path];
-        if (item.customCommand) {
+        // 跳过全局配置项
+        if (path === 'persistPath') continue;
+        
+        const item = config[path] as Webhook;
+        if (item && item.customCommand) {
             // 使用正确的指令注册方式
             const commandName = item.customCommand.startsWith('/') ? item.customCommand.slice(1) : item.customCommand;
             
@@ -202,7 +279,12 @@ export function apply(ctx: Context, config: Config) {
         });
 
     for (let path in config) {
-        let item = config[path];
+        // 跳过全局配置项
+        if (path === 'persistPath') continue;
+        
+        const item = config[path] as Webhook;
+        if (!item || !item.method) continue;
+
         ctx.server[item.method](path, (c: KoaContext, next: Next) => {
             logger.info(`接收到 ${item.method} 请求：${path}`)
             // 对于类型检查，我们需要这样处理，但行为与原代码保持一致
@@ -222,12 +304,20 @@ export function apply(ctx: Context, config: Config) {
             
             // 如果配置了保存最新消息，则进行保存
             if (item.saveLatestMessage && body) {
-                latestMessages[path] = {
+                const message: StoredMessage = {
                     body: {...body},
                     timestamp: Date.now(),
                     path: path
                 };
-                logger.info(`已保存来自 ${path} 的最新消息`);
+                
+                // 更新内存中的消息
+                latestMessages[path] = message;
+                logger.info(`已保存来自 ${path} 的最新消息到内存`);
+                
+                // 如果配置了持久化，则保存到文件
+                if (item.persistMessages) {
+                    persistMessage(path, message, persistPath, logger);
+                }
             }
             
             for (let bot of ctx.bots) {

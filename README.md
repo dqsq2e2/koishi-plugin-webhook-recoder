@@ -14,6 +14,10 @@
 - 支持记录最新的请求数据，并通过命令查询
 - 支持自定义命令，快速获取指定路径的最新消息
 - 支持平台特定的命令，如仅对onebot平台可用的命令
+- 支持保存最新接收的消息
+- 提供自定义指令获取最新保存的消息
+- 支持使用指令选项查询不同路径的消息
+- 支持持久化存储消息，重启后不丢失
 
 ## 安装
 
@@ -45,13 +49,19 @@ yarn add koishi-plugin-webhook-recoder
         "msg": [                   // 消息模板
           "收到新请求: {name}",      // 支持{key}形式的占位符
           "详情: {detail}"          // 多行消息会用换行符合并
-        ]
+        ],
+        "saveLatestMessage": true,  // 是否保存最新消息
+        "persistMessages": true,    // 是否持久化保存消息到磁盘
+        "customCommand": "latest-api",  // 自定义命令名，用于查询最新消息
+        "commandDescription": "获取最新API请求" // 命令描述
       }
     ],
     "saveLatestMessage": true,     // 是否保存最新消息
+    "persistMessages": true,      // 是否持久化保存消息到磁盘
     "customCommand": "latest-api",  // 自定义命令名，用于查询最新消息
     "commandDescription": "获取最新API请求" // 命令描述
-  }
+  },
+  "persistPath": "./data/webhook-messages"  // 消息持久化存储路径
 }
 ```
 
@@ -66,8 +76,10 @@ yarn add koishi-plugin-webhook-recoder
   - **seeisonId**：消息发送目标（群组ID或私聊用户ID，私聊需加 `private:` 前缀）
   - **msg**：消息模板，支持使用 `{key}` 引用请求中的数据
 - **saveLatestMessage**：是否保存最新接收到的消息（用于后续查询）
+- **persistMessages**：是否持久化保存消息到磁盘
 - **customCommand**：定义用于获取最新消息的自定义命令（不需要 `/` 前缀）
 - **commandDescription**：命令的描述文本，会显示在帮助信息中
+- **persistPath**：消息持久化存储路径
 
 ## 使用方法
 
@@ -156,6 +168,7 @@ webhook-latest [path]
   "/github": {
     "method": "post",
     "saveLatestMessage": true,
+    "persistMessages": true,
     "customCommand": "github",
     "commandDescription": "获取最新GitHub推送",
     "response": [
@@ -208,7 +221,7 @@ webhook-latest [path]
 ## 常见问题
 
 1. **自定义命令不起作用？**
-   - 确保配置了 `saveLatestMessage: true`
+   - 确保配置了 `saveLatestMessage`
    - 确保命令名不带 `/` 前缀（配置时）
    - 确保你在配置了 `seeisonId` 的群组或私聊中使用命令
 
