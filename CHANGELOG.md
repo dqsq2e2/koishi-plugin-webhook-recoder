@@ -10,13 +10,13 @@
   - 使用 `ctx.command` 替代原来的中间件方式注册指令
   - 所有自定义指令现在都能在指令列表中显示
   - 添加了详细的指令描述和使用帮助
-  - 支持使用 `/help 命令名` 获取帮助信息
+  - 支持使用 `help 命令名` 获取帮助信息
 
 - 🔄 **指令选项支持**
   - 新增 `-p, --path <path>` 选项，用于指定要查询的Webhook路径
-    - 例如：`/github -p /gitlab` 可查询 `/gitlab` 路径的最新消息
+    - 例如：`github -p /gitlab` 可查询 `/gitlab` 路径的最新消息
   - 支持 `-h, --help` 选项显示帮助信息
-    - 例如：`/github -h` 显示指令帮助
+    - 例如：`github -h` 显示指令帮助
 
 - 🌐 **平台特定指令**
   - 新增 `webhook-latest [path]` 命令，只对onebot平台可用
