@@ -1,8 +1,9 @@
 # koishi-plugin-webhook-recoder
 
 [![npm](https://img.shields.io/npm/v/koishi-plugin-webhook-recoder?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-webhook-recoder)
-[![npm-download](https://img.shields.io/npm/dm/koishi-plugin-webhook-recoder?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-webhook-recoder)
+[![MIT license](https://img.shields.io/badge/license-MIT-brightgreen.svg)](https://opensource.org/licenses/MIT)
 [![github](https://img.shields.io/github/stars/dqsq2e2/koishi-plugin-webhook-recoder?style=flat-square)](https://github.com/dqsq2e2/koishi-plugin-webhook-recoder)
+[![forum](https://img.shields.io/badge/Koishi%E8%AE%BA%E5%9D%9B-%E6%8F%92%E4%BB%B6%E5%8F%91%E5%B8%83-blue?style=flat-square)](https://forum.koishi.xyz/t/topic/10958)
 
 一个用于接收并记录Webhook请求的Koishi插件，支持多种平台的消息转发和查询。
 
