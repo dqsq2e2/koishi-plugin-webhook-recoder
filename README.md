@@ -4,8 +4,6 @@
 [![npm-download](https://img.shields.io/npm/dm/koishi-plugin-webhook-recoder?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-webhook-recoder)
 [![github](https://img.shields.io/github/stars/dqsq2e2/koishi-plugin-webhook-recoder?style=flat-square)](https://github.com/dqsq2e2/koishi-plugin-webhook-recoder)
 
-> **当前版本: 2.1.0** - 徽章显示的版本可能滞后于实际版本，请始终使用最新版本以获得完整功能。
-
 监听指定 Webhook 地址并格式化消息发送的 Koishi 插件，支持保存最新消息并通过自定义指令获取。
 
 ## 最新更新 (v2.1.0)
