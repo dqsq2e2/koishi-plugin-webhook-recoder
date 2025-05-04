@@ -4,7 +4,15 @@
 [![npm-download](https://img.shields.io/npm/dm/koishi-plugin-webhook-recoder?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-webhook-recoder)
 [![github](https://img.shields.io/github/stars/dqsq2e2/koishi-plugin-webhook-recoder?style=flat-square)](https://github.com/dqsq2e2/koishi-plugin-webhook-recoder)
 
+> **当前版本: 2.1.0** - 徽章显示的版本可能滞后于实际版本，请始终使用最新版本以获得完整功能。
+
 监听指定 Webhook 地址并格式化消息发送的 Koishi 插件，支持保存最新消息并通过自定义指令获取。
+
+## 最新更新 (v2.1.0)
+
+- 完善指令响应系统，现在指令只会回复发送者本人或所在群组
+- 优化消息会话ID识别逻辑，更准确地支持群聊/私聊场景
+- 增加详细的指令处理日志，方便调试
 
 ## 功能
 
@@ -17,10 +25,10 @@
 ## 安装
 
 ```bash
-npm i koishi-plugin-webhook-recoder
+npm i koishi-plugin-webhook-recoder@2.1.0
 ```
 
-或者在 Koishi 插件市场搜索 `webhook-recoder` 安装。
+或者在 Koishi 插件市场搜索 `webhook-recoder` 安装最新版本。
 
 ## 配置说明
 

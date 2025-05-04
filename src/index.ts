@@ -96,8 +96,14 @@ function sendLatestMessage(bot: Bot, sessionId: string, path: string, config: Co
     // 查找匹配当前会话的响应配置
     for (const rep of pathConfig.response) {
         if (rep.seeisonId.includes(sessionId)) {
-            // 使用相同的msg模板和替换逻辑
-            sendResponseMsg(bot, rep.platform, rep, storedMessage.body);
+            // 创建一个只包含当前会话ID的响应配置副本
+            const singleSessionResponse: responseType = {
+                ...rep,
+                seeisonId: [sessionId]  // 只包含当前会话ID
+            };
+            
+            // 使用相同的msg模板和替换逻辑，但只发送到当前会话
+            sendResponseMsg(bot, rep.platform, singleSessionResponse, storedMessage.body);
             return;
         }
     }
@@ -115,19 +121,39 @@ export function apply(ctx: Context, config: Config) {
         if (item.customCommand) {
             ctx.middleware((session: Session, next: Next) => {
                 if (session.content === item.customCommand) {
-                    // 找到匹配的机器人
+                    // 确定当前会话的ID
+                    let currentSessionId: string;
+                    
+                    // 区分群聊和私聊
+                    if (session.subtype === 'group') {
+                        // 群聊消息，使用群ID作为会话ID
+                        currentSessionId = session.channelId;
+                    } else if (session.subtype === 'private') {
+                        // 私聊消息，使用带private:前缀的用户ID作为会话ID
+                        currentSessionId = `private:${session.userId}`;
+                    } else {
+                        // 其他类型的消息，使用默认逻辑
+                        currentSessionId = session.guildId ? session.channelId : `private:${session.userId}`;
+                    }
+                    
+                    logger.info(`收到指令 ${item.customCommand}，会话ID: ${currentSessionId}`);
+                    
+                    // 找到匹配的机器人和响应配置
                     for (let bot of ctx.bots) {
                         for (let rep of item.response) {
                             if (bot.platform === rep.platform && bot.selfId === rep.sid) {
                                 // 检查会话是否在配置的会话ID列表中
-                                const currentSessionId = session.guildId ? session.channelId : `private:${session.userId}`;
                                 if (rep.seeisonId.includes(currentSessionId)) {
+                                    logger.info(`匹配成功，将向会话 ${currentSessionId} 发送最新消息`);
+                                    // 只发送到当前会话
                                     sendLatestMessage(bot, currentSessionId, path, config);
                                     return;
                                 }
                             }
                         }
                     }
+                    
+                    logger.info(`未找到匹配的响应配置，会话ID: ${currentSessionId}`);
                 }
                 return next();
             });
