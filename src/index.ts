@@ -36,6 +36,7 @@ export interface Webhook {
     response: responseType[]
     saveLatestMessage?: boolean
     customCommand?: string
+    commandDescription?: string
 }
 
 export interface Config {
@@ -62,7 +63,8 @@ export const Config = Schema.dict(
             msg: Schema.array(Schema.string().default("hello {name}.")).role('table').required().description('需要发送的信息，会使用换行符合并<br>接收的body会按照JSON解析，并将key以{key}形式全替换字符串内容')
         })).description('响应'),
         saveLatestMessage: Schema.boolean().default(false).description('是否保存最新消息'),
-        customCommand: Schema.string().description('触发发送最新保存消息的指令，例如：/latest')
+        customCommand: Schema.string().description('触发发送最新保存消息的指令，例如：/latest'),
+        commandDescription: Schema.string().description('指令的描述')
     })).description("监听指定路径，如:`/api`")
 
 
@@ -119,8 +121,14 @@ export function apply(ctx: Context, config: Config) {
     for (let path in config) {
         const item = config[path];
         if (item.customCommand) {
-            ctx.middleware((session: Session, next: Next) => {
-                if (session.content === item.customCommand) {
+            // 使用正确的指令注册方式
+            const commandName = item.customCommand.startsWith('/') ? item.customCommand.slice(1) : item.customCommand;
+            
+            ctx.command(commandName, item.commandDescription || `获取来自 ${path} 的最新消息`)
+                .option('path', '-p <path>', { fallback: path })
+                .action(async ({ session, options }) => {
+                    if (!session) return '无法获取会话信息';
+                    
                     // 确定当前会话的ID
                     let currentSessionId: string;
                     
@@ -136,29 +144,62 @@ export function apply(ctx: Context, config: Config) {
                         currentSessionId = session.guildId ? session.channelId : `private:${session.userId}`;
                     }
                     
-                    logger.info(`收到指令 ${item.customCommand}，会话ID: ${currentSessionId}`);
+                    logger.info(`收到指令 ${commandName}，会话ID: ${currentSessionId}`);
                     
-                    // 找到匹配的机器人和响应配置
-                    for (let bot of ctx.bots) {
-                        for (let rep of item.response) {
-                            if (bot.platform === rep.platform && bot.selfId === rep.sid) {
-                                // 检查会话是否在配置的会话ID列表中
-                                if (rep.seeisonId.includes(currentSessionId)) {
-                                    logger.info(`匹配成功，将向会话 ${currentSessionId} 发送最新消息`);
-                                    // 只发送到当前会话
-                                    sendLatestMessage(bot, currentSessionId, path, config);
-                                    return;
-                                }
-                            }
-                        }
+                    // 使用用户指定的路径或默认路径
+                    const targetPath = options?.path || path;
+                    
+                    // 找到匹配的机器人
+                    const botId = `${session.platform}:${session.selfId}`;
+                    const bot = ctx.bots[botId];
+                    if (!bot) {
+                        return `找不到匹配的机器人: ${botId}`;
                     }
                     
-                    logger.info(`未找到匹配的响应配置，会话ID: ${currentSessionId}`);
-                }
-                return next();
-            });
+                    // 发送最新消息
+                    sendLatestMessage(bot, currentSessionId, targetPath, config);
+                });
         }
     }
+
+    // 使用ctx.intersect注册一个只对特定平台可用的指令
+    // 例如，只对onebot平台可用的webhook-latest指令
+    ctx.intersect(session => session.platform === 'onebot')
+        .command('webhook-latest [path]', '获取指定Webhook路径的最新消息')
+        .action(async ({ session }, path) => {
+            if (!session) return '无法获取会话信息';
+            
+            if (!path) {
+                // 如果没有指定路径，列出所有可用的路径
+                const paths = Object.keys(latestMessages);
+                if (paths.length === 0) {
+                    return '目前没有任何保存的消息';
+                }
+                return `可用的Webhook路径: ${paths.join(', ')}`;
+            }
+            
+            // 确定当前会话的ID
+            let currentSessionId: string;
+            
+            // 区分群聊和私聊
+            if (session.subtype === 'group') {
+                currentSessionId = session.channelId;
+            } else if (session.subtype === 'private') {
+                currentSessionId = `private:${session.userId}`;
+            } else {
+                currentSessionId = session.guildId ? session.channelId : `private:${session.userId}`;
+            }
+            
+            // 获取机器人
+            const botId = `${session.platform}:${session.selfId}`;
+            const bot = ctx.bots[botId];
+            if (!bot) {
+                return `找不到匹配的机器人: ${botId}`;
+            }
+            
+            // 发送最新消息
+            sendLatestMessage(bot, currentSessionId, path, config);
+        });
 
     for (let path in config) {
         let item = config[path];

@@ -1,7 +1,7 @@
 {
   "name": "koishi-plugin-webhook-recoder",
   "description": "监听指定 Webhook 地址并格式化消息发送，支持保存最新消息并通过自定义指令获取",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "main": "lib/index.js",
   "typings": "lib/index.d.ts",
   "contributors": [
