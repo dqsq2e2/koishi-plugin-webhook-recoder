@@ -94,13 +94,13 @@ yarn add koishi-plugin-webhook-recoder
 **基本用法**：
 
 ```
-/命令名
+命令名
 ```
 
 例如，如果配置了 `customCommand: "github"`，则使用：
 
 ```
-/github
+github
 ```
 
 **选项说明**：
@@ -112,7 +112,7 @@ yarn add koishi-plugin-webhook-recoder
    允许你查询不同于默认路径的其他Webhook路径的最新消息：
    
    ```
-   /github -p /gitlab
+   github -p /gitlab
    ```
    
    这个命令会查询 `/gitlab` 路径的最新消息，而不是默认的 `/github` 路径。
@@ -120,7 +120,7 @@ yarn add koishi-plugin-webhook-recoder
 2. `-h, --help` - 显示命令帮助
    
    ```
-   /github -h
+   github -h
    ```
    
    这会显示命令的帮助信息，包括可用的选项和用法说明。
@@ -185,12 +185,12 @@ webhook-latest [path]
 
    用户可以使用以下命令查询最新的GitHub推送：
    ```
-   /github
+   github
    ```
    
    或者使用选项指定其他路径：
    ```
-   /github -p /gitlab
+   github -p /gitlab
    ```
 
 3. **使用通用命令查询（仅onebot平台）**
