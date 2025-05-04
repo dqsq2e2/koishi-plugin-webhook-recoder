@@ -1,0 +1,55 @@
+{
+  "name": "koishi-plugin-webhook-recoder",
+  "description": "监听指定 Webhook 地址并格式化消息发送，支持保存最新消息并通过自定义指令获取",
+  "version": "2.0.0",
+  "main": "lib/index.js",
+  "typings": "lib/index.d.ts",
+  "contributors": [
+    "Mcayear <mcayear@163.com>",
+    "Xeu <i@xeu.life>",
+    "dqsq2e2"
+  ],
+  "homepage": "https://github.com/dqsq2e2/koishi-plugin-webhook-recoder",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dqsq2e2/koishi-plugin-webhook-recoder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/dqsq2e2/koishi-plugin-webhook-recoder/issues"
+  },
+  "koishi": {
+    "description": {
+      "zh": "监听指定 Webhook 地址并格式化消息发送，支持保存最新消息并通过自定义指令获取"
+    },
+    "service": {
+      "required": ["server"]
+    },
+    "locales": ["zh"]
+  },
+  "files": [
+    "lib",
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -b",
+    "pub": "npm publish"
+  },
+  "license": "MIT",
+  "keywords": [
+    "webhook",
+    "koishi",
+    "plugin",
+    "recorder",
+    "notification"
+  ],
+  "peerDependencies": {
+    "koishi": "^4.17.1"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/koa": "^2.13.4",
+    "@types/koa-bodyparser": "^4.3.7",
+    "typescript": "^5.0.0",
+    "koishi": "^4.17.1"
+  }
+}
