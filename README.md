@@ -21,12 +21,6 @@
 - 支持持久化存储消息，重启后不丢失
 - 可配置是否在接收webhook请求后立即转发消息
 
-## 视频教程
-
-[![视频教程](https://i0.hdslb.com/bfs/archive/5c3f8ad15b0c11d7a2a6b0ea9e2f0f70c290b87f.jpg@640w_400h_1c_!web-search-common-cover.webp)](https://www.bilibili.com/video/BV1mtVNz1EzZ)
-
-点击上方图片观看插件演示及使用教程视频
-
 ## 安装
 
 ```bash
