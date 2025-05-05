@@ -40,6 +40,7 @@ export interface Webhook {
     customCommand?: string
     commandDescription?: string
     persistMessages?: boolean
+    instantForward?: boolean
 }
 
 // 使用独立的配置接口定义，将persistPath移出索引签名范围
@@ -70,7 +71,8 @@ const WebhookSchema = Schema.object({
     saveLatestMessage: Schema.boolean().default(false).description('是否保存最新消息'),
     customCommand: Schema.string().description('触发发送最新保存消息的指令，例如：latest'),
     commandDescription: Schema.string().description('指令的描述'),
-    persistMessages: Schema.boolean().default(false).description('是否将最新消息持久化保存到磁盘')
+    persistMessages: Schema.boolean().default(false).description('是否将最新消息持久化保存到磁盘'),
+    instantForward: Schema.boolean().default(true).description('是否在接收到webhook请求后立即转发')
 })
 
 // 创建完整的配置Schema
@@ -320,17 +322,23 @@ export function apply(ctx: Context, config: Config) {
                 }
             }
             
-            for (let bot of ctx.bots) {
-                for (let rep of item.response) {
-                    if (bot.platform != rep.platform && bot.selfId != rep.sid) {// 过滤机器人平台，用户名
-                        continue;
+            // 只有在开启即时转发（默认为true）时才转发消息
+            if (item.instantForward !== false) {
+                for (let bot of ctx.bots) {
+                    for (let rep of item.response) {
+                        if (bot.platform != rep.platform && bot.selfId != rep.sid) {// 过滤机器人平台，用户名
+                            continue;
+                        }
+                        sendResponseMsg(bot, rep.platform, rep, body ? body : {});
+                        return c.status = 200;
                     }
-                    sendResponseMsg(bot, rep.platform, rep, body ? body : {});
-                    return c.status = 200;
                 }
+                logger.error(`没有找到任何可发送的机器人,可用列表:[${ctx.bots.map((v: Bot) => `${v.platform},${v.selfId}`)}]`)
+                return c.status = 405;
+            } else {
+                logger.info(`接收到来自 ${path} 的请求，但未开启即时转发`);
+                return c.status = 200;
             }
-            logger.error(`没有找到任何可发送的机器人,可用列表:[${ctx.bots.map((v: Bot) => `${v.platform},${v.selfId}`)}]`)
-            return c.status = 405;
         });
     }
 }

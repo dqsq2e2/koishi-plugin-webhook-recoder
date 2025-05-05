@@ -2,6 +2,7 @@
 
 [![npm](https://img.shields.io/npm/v/koishi-plugin-webhook-recoder?style=flat-square)](https://www.npmjs.com/package/koishi-plugin-webhook-recoder)
 [![forum](https://img.shields.io/badge/Koishi%20Forum-Plugin%20Post-blue?style=flat-square)](https://forum.koishi.xyz/t/topic/10958)
+[![video](https://img.shields.io/badge/Tutorial-Video-red?style=flat-square)](https://www.bilibili.com/video/BV1mtVNz1EzZ)
 [![github](https://img.shields.io/github/stars/dqsq2e2/koishi-plugin-webhook-recoder?style=flat-square)](https://github.com/dqsq2e2/koishi-plugin-webhook-recoder)
 
 一个用于接收并记录Webhook请求的Koishi插件，支持多种平台的消息转发和查询。
@@ -18,6 +19,13 @@
 - 提供自定义指令获取最新保存的消息
 - 支持使用指令选项查询不同路径的消息
 - 支持持久化存储消息，重启后不丢失
+- 可配置是否在接收webhook请求后立即转发消息
+
+## 视频教程
+
+[![视频教程](https://i0.hdslb.com/bfs/archive/5c3f8ad15b0c11d7a2a6b0ea9e2f0f70c290b87f.jpg@640w_400h_1c_!web-search-common-cover.webp)](https://www.bilibili.com/video/BV1mtVNz1EzZ)
+
+点击上方图片观看插件演示及使用教程视频
 
 ## 安装
 
@@ -59,7 +67,8 @@ yarn add koishi-plugin-webhook-recoder
     "saveLatestMessage": true,     // 是否保存最新消息
     "persistMessages": true,      // 是否持久化保存消息到磁盘
     "customCommand": "latest-api",  // 自定义命令名，用于查询最新消息
-    "commandDescription": "获取最新API请求" // 命令描述
+    "commandDescription": "获取最新API请求", // 命令描述
+    "instantForward": true       // 是否在接收到webhook后立即转发消息
   },
   "persistPath": "./data/webhook-messages"  // 消息持久化存储路径
 }
@@ -79,6 +88,7 @@ yarn add koishi-plugin-webhook-recoder
 - **persistMessages**：是否持久化保存消息到磁盘
 - **customCommand**：定义用于获取最新消息的自定义命令（不需要 `/` 前缀）
 - **commandDescription**：命令的描述文本，会显示在帮助信息中
+- **instantForward**：是否在接收到webhook请求后立即转发消息（默认为true，设为false时仅保存不转发）
 - **persistPath**：消息持久化存储路径
 
 ## 使用方法
