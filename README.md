@@ -5,7 +5,7 @@
 [![video](https://img.shields.io/badge/Tutorial-Video-red?style=flat-square)](https://www.bilibili.com/video/BV1mtVNz1EzZ)
 [![github](https://img.shields.io/github/stars/dqsq2e2/koishi-plugin-webhook-recoder?style=flat-square)](https://github.com/dqsq2e2/koishi-plugin-webhook-recoder)
 
-一个用于接收并记录Webhook请求的Koishi插件，支持多种平台的消息转发和查询。
+一个用于接收并记录Webhook请求的Koishi插件，支持多种平台的消息转发和查询。最新版本优化了消息展示格式，修复了序号显示问题，并增强了权限控制，使你可以更高效地管理和检索历史消息。
 
 ## 功能特点
 
@@ -20,6 +20,13 @@
 - 支持使用指令选项查询不同路径的消息
 - 支持持久化存储消息，重启后不丢失
 - 可配置是否在接收webhook请求后立即转发消息
+- 支持存储多条历史消息，并根据索引查询指定消息
+- 提供消息管理功能，可删除单条、多条或所有历史消息
+- 自动管理消息历史，当超过最大限制时自动移除最旧的消息
+- 支持范围查询功能，可使用 `-n 2-5` 查询指定范围的消息
+- 精确的序号显示：查询结果显示的序号与请求的索引一致
+- 智能时间戳显示：仅在使用索引查询或范围查询时显示
+- 严格的权限控制：必须开启 `storeAllMessages` 才能使用 `-n` 或 `-d` 选项
 
 ## 安装
 
@@ -54,12 +61,16 @@ yarn add koishi-plugin-webhook-recoder
         ],
         "saveLatestMessage": true,  // 是否保存最新消息
         "persistMessages": true,    // 是否持久化保存消息到磁盘
+        "storeAllMessages": true,    // 是否存储所有接收到的消息（设为false时仅保存最新消息）
+        "maxStoredMessages": 50,     // 最大存储消息数量（仅在storeAllMessages为true时有效）
         "customCommand": "latest-api",  // 自定义命令名，用于查询最新消息
         "commandDescription": "获取最新API请求" // 命令描述
       }
     ],
     "saveLatestMessage": true,     // 是否保存最新消息
     "persistMessages": true,      // 是否持久化保存消息到磁盘
+    "storeAllMessages": true,     // 是否存储所有接收到的消息历史记录（设为false时仅保存最新消息）
+    "maxStoredMessages": 50,      // 最大存储消息数量（防止消息过多占用内存，仅在storeAllMessages为true时有效）
     "customCommand": "latest-api",  // 自定义命令名，用于查询最新消息
     "commandDescription": "获取最新API请求", // 命令描述
     "instantForward": true       // 是否在接收到webhook后立即转发消息
@@ -80,6 +91,8 @@ yarn add koishi-plugin-webhook-recoder
   - **msg**：消息模板，支持使用 `{key}` 引用请求中的数据
 - **saveLatestMessage**：是否保存最新接收到的消息（用于后续查询）
 - **persistMessages**：是否持久化保存消息到磁盘
+- **storeAllMessages**：是否存储所有接收到的消息历史记录（设为false时仅保存最新消息，且无法使用-n或-d选项）
+- **maxStoredMessages**：最大存储消息数量（防止消息过多占用内存，超过此限制时自动移除最旧的消息）
 - **customCommand**：定义用于获取最新消息的自定义命令（不需要 `/` 前缀）
 - **commandDescription**：命令的描述文本，会显示在帮助信息中
 - **instantForward**：是否在接收到webhook请求后立即转发消息（默认为true，设为false时仅保存不转发）
@@ -133,7 +146,36 @@ github
    
    这个命令会查询被指定 `/gitlab` 路径的最新消息，而不是默认的路径。
 
-2. `-h, --help` - 显示命令帮助
+2. `-n, --number <number>` - 指定要查询的消息索引或全部消息
+   
+   允许你查询指定索引的历史消息、指定范围的消息或所有消息：
+   
+   ```
+   github -n 1     # 查询最新的一条消息（默认）
+   github -n 3     # 查询第3条最新消息
+   github -n 2-5   # 查询第2到第5条消息范围
+   github -n all   # 查询所有保存的消息
+   github -n a     # 'all'的简写，查询所有消息
+   ```
+   
+   **注意**：必须开启 `storeAllMessages` 选项才能使用 `-n` 选项。索引从1开始，1表示最新消息，2表示第二新的消息，以此类推。
+
+3. `-d, --delete <range>` - 删除指定范围的消息
+   
+   允许你删除一条、多条或所有消息：
+   
+   ```
+   github -d 3        # 删除第3条消息
+   github -d 2-5      # 删除第2至第5条消息
+   github -d all      # 删除所有消息
+   github -d a        # 'all'的简写，删除所有消息
+   github -d old      # 删除最新消息以外的所有消息
+   github -d o        # 'old'的简写，删除最新消息以外的所有消息
+   ```
+   
+   **注意**：必须开启 `storeAllMessages` 选项才能使用 `-d` 选项。
+
+4. `-h, --help` - 显示命令帮助
    
    ```
    github -h
@@ -232,7 +274,11 @@ webhook-latest [path]
 2. **如何同时监听多个Webhook路径？**
    - 在配置中添加多个路径键值对，每个路径可以有不同的配置
 
-3. **如何测试Webhook？**
+3. **无法使用 -n 或 -d 选项？**
+   - 检查对应路径是否开启了 `storeAllMessages` 选项
+   - 只有开启了 `storeAllMessages` 的路径才能使用这些选项
+
+4. **如何测试Webhook？**
    - 可以使用工具如 Postman 或 curl 发送测试请求
    - 例如：`curl -X POST -H "Content-Type: application/json" -d '{"name":"test"}' http://yourserver:port/api`
 
